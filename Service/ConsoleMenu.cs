@@ -33,23 +33,41 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
     private async Task Worker()
     {
         const string auth = "Авторизация";
+        const string download = "Загрузка";
         const string exit = "Выйти";
+
+        const string downloadUser = "Скачать по юзернейму";
+        const string downloadTag = "Скачать по тегу";
         
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
             var choices = new SelectionPrompt<string>()
                 .Title("Выберете действие")
                 .HighlightStyle(style)
-                .AddChoices(auth, exit);
-            
+                .AddChoices(auth, download, exit);
             var prompt = AnsiConsole.Prompt(choices);
-
             try
             {
                 switch (prompt)
                 {
                     case auth:
                         await handler.Login();
+                        break;
+                    case download:
+                        var downloadChoices = new SelectionPrompt<string>()
+                            .Title("Выберете действие")
+                            .HighlightStyle(style)
+                            .AddChoices(downloadUser, downloadTag);
+                        var downloadPrompt = AnsiConsole.Prompt(downloadChoices);
+                        switch (downloadPrompt)
+                        {
+                            case downloadUser:
+                                await handler.DownloadUser();
+                                break;
+                            case downloadTag:
+                                
+                                break;
+                        }
                         break;
                     case exit:
                         lifetime.StopApplication();

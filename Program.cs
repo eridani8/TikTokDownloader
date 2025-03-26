@@ -7,6 +7,7 @@ using Spectre.Console;
 using TikTokDownloader.Service;
 using TikTokDownloader.Service.TikTok;
 using UndChrDrv;
+using Extensions = TikTokDownloader.Service.Extensions;
 
 const string outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 var logsPath = Path.Combine("logs");
@@ -21,6 +22,8 @@ Log.Logger = new LoggerConfiguration()
     
 try
 {
+    await Extensions.Switch();
+    
     ChrDrvSettings.ChromeDir = Path.Combine(@"H:\Chrome"); // TODO Directory.GetCurrentDirectory() // "Chrome"
     ChrDrvSettings.UsernameDir = "ReallyRealUser";
     
