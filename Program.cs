@@ -28,7 +28,7 @@ try
     ChrDrvSettings.ChromeDir = Path.Combine(@"H:\Chrome"); // TODO Directory.GetCurrentDirectory() // "Chrome"
     ChrDrvSettings.UsernameDir = "ReallyRealUser";
 
-    await "https://github.com/yt-dlp/yt-dlp/releases/download/2025.03.26/yt-dlp.exe"
+    await "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
         .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
     
     var builder = Host.CreateApplicationBuilder();

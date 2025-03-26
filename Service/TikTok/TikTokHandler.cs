@@ -8,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using OpenQA.Selenium;
 using ParserExtension;
 using ParserExtension.Helpers;
+using Polly;
+using Polly.Retry;
 using Serilog;
 using Spectre.Console;
 using UndChrDrv;
@@ -30,19 +32,9 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
 {
     private const string SiteUrl = "https://www.tiktok.com";
     private const string ChrDrvLoadException = "Chrome Driver could not initialize";
-    // private readonly Dictionary<string, string> _headers = new()
-    // {
-    //     { "sec-ch-ua", """ Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134" """ },
-    //     { "sec-ch-ua-mobile", "?0" },
-    //     { "sec-ch-ua-platform", """ "Windows" """ },
-    //     { "sec-fetch-dest", "document" },
-    //     { "sec-fetch-mode", "navigate" },
-    //     { "sec-fetch-site", "none" },
-    //     { "sec-fetch-user", "?1" },
-    //     { "upgrade-insecure-requests", "1" },
-    //     { "user-agent", "insomnia/11.0.0, Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36" },
-    // };
-    // private Dictionary<string, string> _cookies = new();
+    private readonly AsyncRetryPolicy<string?> _downloadPolicy = Policy
+        .HandleResult<string?>(result => result == null)
+        .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
 
     public async Task Login()
     {
@@ -76,23 +68,30 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         await StopAtCaptcha(drv);
 
         var userPath = Path.Combine("videos", "users", username);
-        if (!Directory.Exists(userPath))
-        {
-            Directory.CreateDirectory(userPath);
-        }
-
+        
         var videosContainer = await drv.GetElement(By.XPath("//div[@data-e2e='user-post-item-list']"));
         if (videosContainer is not null)
         {
+            if (!Directory.Exists(userPath))
+            {
+                Directory.CreateDirectory(userPath);
+            }
+            
             var xpathSet = new XpathSet(
                 "//div[@data-e2e='user-post-item-list']/div",
                 "//a[contains(@href,'/video/')]");
+            
+            var cookiesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "cookies.txt");
 
             await foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
             {
+                if (lifetime.ApplicationStopping.IsCancellationRequested) break;
                 drv.FocusAndScrollToElement(videoDiv.Xpath);
-                // _cookies = drv.GetCookiesAsDictionary();
-                var path = await DownloadVideoFile(videoDiv.Url, userPath);
+                var path = await _downloadPolicy.ExecuteAsync(async () =>
+                {
+                    await drv.SaveCookiesToNetscapeFile(cookiesDirectory, "tiktok.com");
+                    return await DownloadVideoFile(videoDiv.Url, userPath);
+                });
                 if (path != null)
                 {
                     AnsiConsole.Write(new TextPath(path.EscapeMarkup())
@@ -104,7 +103,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
                 }
                 else
                 {
-                    AnsiConsole.WriteLine(videoDiv.Url.MarkupErrorColor());
+                    AnsiConsole.MarkupLine(videoDiv.Url.MarkupErrorColor());
                 }
             }
         }
@@ -112,7 +111,8 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         {
             AnsiConsole.MarkupLine("Видео на найдены".MarkupErrorColor());
         }
-
+        
+        File.Delete("cookies.txt");
         drv.Dispose();
     }
 
@@ -133,10 +133,13 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
 
             foreach (var videoDiv in GetVideoUrls(parse, xpathSet))
             {
+                if (lifetime.ApplicationStopping.IsCancellationRequested) break;
                 if (videoDiv is null || !list.Add(videoDiv.Url)) continue;
                 yield return videoDiv;
             }
 
+            if (lifetime.ApplicationStopping.IsCancellationRequested) break;
+            
             await StopAtCaptcha(drv);
             drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
             await StopAtCaptcha(drv);
@@ -188,23 +191,24 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         var fileName = url.Split('/').Last();
         if (string.IsNullOrEmpty(fileName)) return null;
 
-        var args = $"""--no-progress -N 7 -P "{Path.GetFullPath(directoryPath)}" -o "{fileName}.%(ext)s" {url} """;
+        var errorStringBuilder = new StringBuilder();
+
+        var fullDirectoryPath = Path.GetFullPath(directoryPath);
+        
+        var args = $"""--cookies=cookies.txt --no-progress -N 7 -P "{fullDirectoryPath}" -o "{fileName}.%(ext)s" {url} """;
         var cli = Cli.Wrap("yt-dlp.exe")
             .WithArguments(args)
-            .WithValidation(CommandResultValidation.None);
+            .WithWorkingDirectory(Directory.GetCurrentDirectory())
+            .WithValidation(CommandResultValidation.None)
+            .WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorStringBuilder));
         
         await cli.ExecuteBufferedAsync();
-
-        // var getUrl = await url
-        //     .WithHeaders(_headers)
-        //     .WithCookies(_cookies)
-        //     .GetStringAsync();
-        //
-        // var directory = Path.GetFullPath(directoryPath);
-        // await url
-        //     .WithHeaders(_headers)
-        //     .WithCookies(_cookies)
-        //     .DownloadFileAsync(directory, $"{fileName}.mp4");
+        
+        var error = errorStringBuilder.ToString();
+        if (!string.IsNullOrEmpty(error))
+        {
+            await File.WriteAllTextAsync(Path.Combine(fullDirectoryPath, $"{fileName}.error.log"), error);
+        }
 
         var filePath = Directory.EnumerateFiles(directoryPath)
             .FirstOrDefault(file => Path.GetFileNameWithoutExtension(file) == fileName);
