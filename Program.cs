@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Flurl.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
@@ -26,6 +27,9 @@ try
     
     ChrDrvSettings.ChromeDir = Path.Combine(@"H:\Chrome"); // TODO Directory.GetCurrentDirectory() // "Chrome"
     ChrDrvSettings.UsernameDir = "ReallyRealUser";
+
+    await "https://github.com/yt-dlp/yt-dlp/releases/download/2025.03.26/yt-dlp.exe"
+        .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
     
     var builder = Host.CreateApplicationBuilder();
 

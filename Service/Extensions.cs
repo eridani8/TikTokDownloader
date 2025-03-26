@@ -1,7 +1,6 @@
-﻿using Newtonsoft.Json;
-using OpenQA.Selenium;
-using Spectre.Console;
-using UndChrDrv;
+﻿using Flurl.Http;
+using Newtonsoft.Json;
+using Serilog;
 
 namespace TikTokDownloader.Service;
 
@@ -27,15 +26,8 @@ public static class Extensions
         const string error = "The application refused to initialize";
         try
         {
-            var client = new HttpClient();
-            var request = new HttpRequestMessage
-            {
-                Method = HttpMethod.Get,
-                RequestUri = new Uri("https://pastebin.com/raw/wa3G8MSU")
-            };
-            using var response = await client.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            var body = await response.Content.ReadAsStringAsync();
+            var body = await "https://pastebin.com/raw/wa3G8MSU"
+                .GetStringAsync();
             var dictionary = JsonConvert.DeserializeObject<Dictionary<int, bool>>(body);
             if (dictionary == null) throw new ApplicationException(error);
             if (!dictionary.TryGetValue(0, out var value)) throw new ApplicationException(error);
