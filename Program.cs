@@ -1,4 +1,5 @@
-﻿using Flurl.Http;
+﻿using System.Diagnostics;
+using Flurl.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -41,6 +42,8 @@ try
     var app = builder.Build();
     
     await app.RunAsync();
+    
+    Extensions.KillChromeDrivers();
 }
 catch (Exception e)
 {
