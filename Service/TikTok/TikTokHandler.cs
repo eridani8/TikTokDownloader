@@ -123,7 +123,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         var list = new HashSet<string>();
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
-            await StopAtCaptcha(drv);
+            await StopAtCaptcha(drv); // *
             var parse = drv.PageSource.GetParse();
 
             if (parse is null)
@@ -140,19 +140,18 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
 
             if (lifetime.ApplicationStopping.IsCancellationRequested) break;
             
-            await StopAtCaptcha(drv);
+            await StopAtCaptcha(drv); // *
             drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-            await StopAtCaptcha(drv);
-            drv.SpecialWait(7000);
+            await StopAtCaptcha(drv); // *
+            drv.SpecialWait(5000);
             var newHeight = drv.ExecuteScript("return document.body.scrollHeight");
             if (newHeight != null && newHeight.Equals(height))
             {
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight-4000)");
                 drv.SpecialWait(2000);
-                await StopAtCaptcha(drv);
+                await StopAtCaptcha(drv); // *
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-                drv.SpecialWait(2000);
-                drv.SpecialWait(7000);
+                drv.SpecialWait(5000);
                 newHeight = drv.ExecuteScript("return document.body.scrollHeight");
             }
         }
@@ -177,7 +176,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
             var isCaptcha =
-                await chrDrv.GetElement(By.XPath("//div[@role='dialog' and contains(@class,'captcha_verify')]"), 5);
+                await chrDrv.GetElement(By.XPath("//div[@role='dialog' and contains(@class,'captcha_verify')]"), 3);
             if (isCaptcha == null) break;
 
             AnsiConsole.MarkupLine("Обнаружена каптча, пройдите и нажмите любую клавишу...".MarkupMainColor());
