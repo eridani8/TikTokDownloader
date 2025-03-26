@@ -8,6 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Flurl" Version="4.0.0" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.12.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Selenium.WebDriver" Version="4.30.0" />
@@ -20,6 +22,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="ParserExtension">
+        <HintPath>F:\dev\proj\ParserExtension\ParserExtension\bin\Debug\net9.0\ParserExtension.dll</HintPath>
+      </Reference>
       <Reference Include="UndChrDrv">
         <HintPath>F:\dev\proj\ChrDrv\UndChrDrv\bin\Debug\net9.0\UndChrDrv.dll</HintPath>
       </Reference>
