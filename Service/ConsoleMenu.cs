@@ -1,10 +1,11 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Serilog;
 using Spectre.Console;
+using TikTokDownloader.Service.TikTok;
 
 namespace TikTokDownloader.Service;
 
-public class ConsoleMenu(MenuHandler menuHandler, IHostApplicationLifetime lifetime, Style style) : IHostedService
+public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style) : IHostedService
 {
     private Task? _task;
     
@@ -48,7 +49,7 @@ public class ConsoleMenu(MenuHandler menuHandler, IHostApplicationLifetime lifet
                 switch (prompt)
                 {
                     case auth:
-                        await menuHandler.Authorization();
+                        await handler.Login();
                         break;
                     case exit:
                         lifetime.StopApplication();
