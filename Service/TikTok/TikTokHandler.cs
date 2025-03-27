@@ -22,26 +22,24 @@ public interface ITikTokHandler
     IEnumerable<VideoDiv?> GetVideoUrls(ParserWrapper parse, XpathSet xpath);
     Task<string?> DownloadVideoFile(string url, string directoryPath);
     string GetUsername();
+    List<ChrDrv> Drivers { get; set; }
 }
 
 public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
 {
     private const string SiteUrl = "https://www.tiktok.com";
-    private const string ChrDrvLoadException = "Chrome Driver could not initialize";
     private readonly AsyncRetryPolicy<string?> _downloadPolicy = Policy
         .HandleResult<string?>(result => result == null)
         .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
     private Timer? _timer;
     private const int TimerPeriod = 1000;
-    private const string VideosDirectory = @"F:\tt\videos";
+    private const string VideosDirectory = @"F:\tt\videos";  // TODO
+    public List<ChrDrv> Drivers { get; set; } = [];
 
     public async Task Login()
     {
-        var drv = await ChrDrv.Create(drvSettings);
-        if (drv is null)
-        {
-            throw new ApplicationException(ChrDrvLoadException);
-        }
+        var drv = await ChrDrvFactory.Create(drvSettings);
+        Drivers.Add(drv);
 
         await drv.Navigate().GoToUrlAsync("https://www.tiktok.com/");
         await drv.ClickElement(
@@ -51,11 +49,8 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
     public async Task DownloadUser()
     {
         var username = GetUsername();
-        var drv = await ChrDrv.Create(drvSettings);
-        if (drv is null)
-        {
-            throw new ApplicationException(ChrDrvLoadException);
-        }
+        var drv = await ChrDrvFactory.Create(drvSettings);
+        Drivers.Add(drv);
 
         var userUrl = Url.Combine(SiteUrl, $"@{username}");
         if (!Url.IsValid(userUrl))

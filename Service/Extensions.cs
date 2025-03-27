@@ -7,25 +7,6 @@ namespace TikTokDownloader.Service;
 
 public static class Extensions
 {
-    public static void KillChromeDrivers()
-    {
-        var processes = Process.GetProcessesByName("ChromeDriver");
-        foreach (var process in processes)
-        {
-            try
-            {
-                if (!process.HasExited)
-                {
-                    process.Kill();
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Unable to kill ChromeDriver");
-            }
-        }
-    }
-    
     public static string MarkupAquaColor(this string str)
     {
         return $"[aquamarine1]{str}[/]";

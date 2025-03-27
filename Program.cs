@@ -45,10 +45,14 @@ try
     
     var app = builder.Build();
 
-    app.Services
-        .GetRequiredService<IHostApplicationLifetime>()
-        .ApplicationStopping
-        .Register(Extensions.KillChromeDrivers);
+    AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+    {
+        if (app.Services.GetRequiredService<ITikTokHandler>() is not { } handler) return;
+        foreach (var drv in handler.Drivers)
+        {
+            drv.Dispose();
+        }
+    };
     
     await app.RunAsync();
 }
