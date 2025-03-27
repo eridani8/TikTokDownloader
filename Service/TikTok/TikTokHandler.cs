@@ -24,7 +24,7 @@ public interface ITikTokHandler
     string GetUsername();
 }
 
-public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITikTokHandler
+public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
 {
     private const string SiteUrl = "https://www.tiktok.com";
     private const string ChrDrvLoadException = "Chrome Driver could not initialize";
@@ -33,10 +33,11 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
     private Timer? _timer;
     private const int TimerPeriod = 1000;
+    private const string VideosDirectory = @"F:\tt\videos";
 
     public async Task Login()
     {
-        var drv = await ChrDrv.Create();
+        var drv = await ChrDrv.Create(drvSettings);
         if (drv is null)
         {
             throw new ApplicationException(ChrDrvLoadException);
@@ -50,7 +51,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
     public async Task DownloadUser()
     {
         var username = GetUsername();
-        var drv = await ChrDrv.Create();
+        var drv = await ChrDrv.Create(drvSettings);
         if (drv is null)
         {
             throw new ApplicationException(ChrDrvLoadException);
@@ -64,12 +65,13 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
 
         await drv.Navigate().GoToUrlAsync(userUrl);
 
-        var userPath = Path.Combine("videos", "users", username);
+        AnsiConsole.MarkupLine("Подготовка...".MarkupMainColor());
+        
+        var userPath = Path.Combine(VideosDirectory, "users", username);
         var index = 1;
         var videosContainer = await drv.GetElement(By.XPath("//div[@data-e2e='user-post-item-list']"), 5);
         if (videosContainer is not null)
         {
-            AnsiConsole.MarkupLine("Подготовка...".MarkupMainColor());
             _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
             
             if (!Directory.Exists(userPath))

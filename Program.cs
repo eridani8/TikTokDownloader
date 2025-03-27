@@ -25,9 +25,6 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     await Extensions.Switch();
-    
-    ChrDrvSettings.ChromeDir = Path.Combine(@"H:\Chrome"); // TODO Directory.GetCurrentDirectory() // "Chrome"
-    ChrDrvSettings.UsernameDir = "ReallyRealUser";
 
     AnsiConsole.MarkupLine("Запуск...".MarkupAquaColor());
     
@@ -37,6 +34,11 @@ try
     var builder = Host.CreateApplicationBuilder();
 
     builder.Services.AddSerilog();
+    builder.Services.AddSingleton<ChrDrvSettings>(_ => new ChrDrvSettings()
+    {
+        ChromeDir = Path.Combine(@"H:\Chrome"), // TODO Directory.GetCurrentDirectory() // "Chrome"
+        UsernameDir = "ReallyRealUser"
+    });
     builder.Services.AddSingleton<Style>(_ => new Style(Color.MediumPurple3));
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
     builder.Services.AddHostedService<ConsoleMenu>();
