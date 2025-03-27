@@ -2,7 +2,7 @@
 Использует **Selenium** для загрузки страниц, по этому понадобится **Google Chrome**.  
 Перед запуском ничего делать не нужно, все зависимости скачаются сами.  
 Для вывода используется [Spectre.Console](https://github.com/spectreconsole/spectre.console). Файлы без ватемарок качает [yt-dlp](https://github.com/yt-dlp/yt-dlp).  
-Управление `Google Chrome` реализовано так, что бы имитировать человека, и использует методы [SeleniumStealth .NET](https://github.com/LibardiFelipe/SeleniumStealth.NET), что позволяет не выдавать скриптовое управление.  
+Управление `Google Chrome` реализовано так, что бы имитировать человека, и использует методы [SeleniumStealth .NET](https://github.com/LibardiFelipe/SeleniumStealth.NET), а также другие флаги, что позволяет не выдавать скриптовое управление.  
 
 ### Запуск
 ![1.png](Images/1.png)  
