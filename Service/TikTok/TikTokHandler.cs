@@ -28,12 +28,9 @@ public interface ITikTokHandler
 public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
 {
     private const string SiteUrl = "https://www.tiktok.com";
-    private readonly AsyncRetryPolicy<string?> _downloadPolicy = Policy
-        .HandleResult<string?>(result => result == null)
-        .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
     private Timer? _timer;
     private const int TimerPeriod = 1000;
-    public const string VideosDirectory = @"F:\tt\videos";  // TODO
+    public const string VideosDirectory = @"F:\tt\videos"; // TODO
     public List<ChrDrv> Drivers { get; set; } = [];
     private volatile bool _captchaDetected;
 
@@ -42,16 +39,16 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("Пройдите авторизацию, после чего нажмите любую клавишу...".MarkupPrimaryColor());
         AnsiConsole.WriteLine();
-        
+
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
 
         await drv.Navigate().GoToUrlAsync("https://www.tiktok.com/");
         await drv.ClickElement(
             By.XPath("//div[contains(@class, 'NavPlaceholder')]//button[@id='header-login-button']"));
-        
+
         Console.ReadKey(true);
-        
+
         drv.Dispose();
     }
 
@@ -73,36 +70,39 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("Подготовка...".MarkupPrimaryColor());
         AnsiConsole.WriteLine();
-        
+
         var userPath = Path.Combine(VideosDirectory, "users", username);
         var index = 1;
         var videosContainer = await drv.GetElement(By.XPath("//div[@data-e2e='user-post-item-list']"), 5);
         if (videosContainer is not null)
         {
             _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
-            
+            var downloadPolicy = Policy
+                .HandleResult<string?>(result => result == null)
+                .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
+
             if (!Directory.Exists(userPath))
             {
                 Directory.CreateDirectory(userPath);
             }
-            
+
             var xpathSet = new XpathSet(
                 "//div[@data-e2e='user-post-item-list']/div",
                 "//a[contains(@href,'/video/')]");
-            
+
             var cookiesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "cookies.txt");
 
             foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
             {
                 if (lifetime.ApplicationStopping.IsCancellationRequested) break;
-                
+
                 while (_captchaDetected)
                 {
                     await Task.Delay(3000);
                 }
-                
+
                 drv.FocusAndScrollToElement(videoDiv.Xpath);
-                var path = await _downloadPolicy.ExecuteAsync(async () =>
+                var path = await downloadPolicy.ExecuteAsync(async () =>
                 {
                     await drv.SaveCookiesToNetscapeFile(cookiesDirectory, "tiktok.com");
                     return await DownloadVideoFile(videoDiv.Url, userPath);
@@ -137,9 +137,12 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         {
             await _timer.DisposeAsync();
         }
-        
+
         File.Delete("cookies.txt");
         drv.Dispose();
+
+        AnsiConsole.MarkupLine($"Загрузка {username} завершена, скачано {index} видео".EscapeMarkup()
+            .MarkupPrimaryColor());
     }
 
     public IEnumerable<VideoDiv> ScrollAndGetUrls(ChrDrv drv, XpathSet xpathSet)
@@ -164,7 +167,8 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
 
             var previousHeight = drv.ExecuteScript("return document.body.scrollHeight");
             drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-            drv.SpecialWait(3000);
+            drv.SpecialWait(2000);
+            
             var newHeight = drv.ExecuteScript("return document.body.scrollHeight");
 
             if (newHeight != null && newHeight.Equals(previousHeight))
@@ -179,7 +183,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight-4000)");
                 drv.SpecialWait(2000);
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-                drv.SpecialWait(3000);
+                drv.SpecialWait(2000);
             }
             else
             {
@@ -187,7 +191,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
             }
         }
     }
-    
+
     public IEnumerable<VideoDiv?> GetVideoUrls(ParserWrapper parse, XpathSet xpath)
     {
         var xpathCollection = parse.GetXPaths(xpath.Root);
@@ -221,7 +225,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         _captchaDetected = false;
         _timer?.Change(0, 1000);
     }
-    
+
     public async Task<string?> DownloadVideoFile(string url, string directoryPath)
     {
         var fileName = url.Split('/').Last();
@@ -230,16 +234,17 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         var errorStringBuilder = new StringBuilder();
 
         var fullDirectoryPath = Path.GetFullPath(directoryPath);
-        
-        var args = $"""--cookies=cookies.txt --no-progress -N 7 -P "{fullDirectoryPath}" -o "{fileName}.%(ext)s" {url} """;
+
+        var args =
+            $"""--cookies=cookies.txt --no-progress -N 7 -P "{fullDirectoryPath}" -o "{fileName}.%(ext)s" {url} """;
         var cli = Cli.Wrap("yt-dlp.exe")
             .WithArguments(args)
             .WithWorkingDirectory(Directory.GetCurrentDirectory())
             .WithValidation(CommandResultValidation.None)
             .WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorStringBuilder));
-        
+
         await cli.ExecuteBufferedAsync(lifetime.ApplicationStopping);
-        
+
         var error = errorStringBuilder.ToString();
         if (!string.IsNullOrEmpty(error))
         {
