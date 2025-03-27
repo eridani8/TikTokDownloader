@@ -28,12 +28,10 @@ try
 
     var style = new Style(Color.Aquamarine1);
     
-    // AnsiConsole.MarkupLine("Запуск...".MarkupPrimaryColor());
-
     await AnsiConsole.Status()
         .Spinner(Spinner.Known.Balloon)
         .SpinnerStyle(style)
-        .StartAsync("Запуск...", async _ => 
+        .StartAsync("Запуск...", async _ =>
         {
             await "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
                 .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
@@ -70,6 +68,8 @@ try
 catch (Exception e)
 {
     Log.Fatal(e, "The application cannot be loaded");
+    AnsiConsole.MarkupLine("Нажмите любую клавишу для выхода...".MarkupErrorColor());
+    Console.ReadKey(true);
 }
 finally
 {

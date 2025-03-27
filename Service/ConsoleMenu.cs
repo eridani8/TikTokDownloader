@@ -92,7 +92,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
                                 await handler.DownloadUser();
                                 break;
                             case downloadTag:
-                                
+                                await handler.DownloadTag();
                                 break;
                         }
                         break;
