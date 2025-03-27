@@ -1,16 +1,13 @@
 ﻿using System.Text;
 using CliWrap;
 using CliWrap.Buffered;
-using CliWrap.EventStream;
 using Flurl;
-using Flurl.Http;
 using Microsoft.Extensions.Hosting;
 using OpenQA.Selenium;
 using ParserExtension;
 using ParserExtension.Helpers;
 using Polly;
 using Polly.Retry;
-using Serilog;
 using Spectre.Console;
 using UndChrDrv;
 using UndChrDrv.Stealth.Clients.Extensions;
@@ -21,9 +18,8 @@ public interface ITikTokHandler
 {
     Task Login();
     Task DownloadUser();
-    IAsyncEnumerable<VideoDiv> ScrollAndGetUrls(ChrDrv drv, XpathSet xpathSet);
+    IEnumerable<VideoDiv> ScrollAndGetUrls(ChrDrv drv, XpathSet xpathSet);
     IEnumerable<VideoDiv?> GetVideoUrls(ParserWrapper parse, XpathSet xpath);
-    Task StopAtCaptcha(ChrDrv chrDrv);
     Task<string?> DownloadVideoFile(string url, string directoryPath);
     string GetUsername();
 }
@@ -35,6 +31,8 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
     private readonly AsyncRetryPolicy<string?> _downloadPolicy = Policy
         .HandleResult<string?>(result => result == null)
         .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
+    private Timer? _timer;
+    private const int TimerPeriod = 1000;
 
     public async Task Login()
     {
@@ -65,13 +63,15 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         }
 
         await drv.Navigate().GoToUrlAsync(userUrl);
-        await StopAtCaptcha(drv);
 
         var userPath = Path.Combine("videos", "users", username);
-        
-        var videosContainer = await drv.GetElement(By.XPath("//div[@data-e2e='user-post-item-list']"));
+        var index = 1;
+        var videosContainer = await drv.GetElement(By.XPath("//div[@data-e2e='user-post-item-list']"), 5);
         if (videosContainer is not null)
         {
+            AnsiConsole.MarkupLine("Подготовка...".MarkupMainColor());
+            _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
+            
             if (!Directory.Exists(userPath))
             {
                 Directory.CreateDirectory(userPath);
@@ -83,7 +83,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
             
             var cookiesDirectory = Path.Combine(Directory.GetCurrentDirectory(), "cookies.txt");
 
-            await foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
+            foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
             {
                 if (lifetime.ApplicationStopping.IsCancellationRequested) break;
                 drv.FocusAndScrollToElement(videoDiv.Xpath);
@@ -94,69 +94,82 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
                 });
                 if (path != null)
                 {
+                    AnsiConsole.Markup($"[{index}] ".EscapeMarkup().MarkupMainColor());
                     AnsiConsole.Write(new TextPath(path.EscapeMarkup())
                         .RootColor(Color.Yellow)
                         .SeparatorColor(Color.SeaGreen1)
                         .StemColor(Color.Yellow)
                         .LeafColor(Color.Green));
+                    AnsiConsole.Markup(" OK".MarkupAquaColor());
                     AnsiConsole.WriteLine();
                 }
                 else
                 {
                     AnsiConsole.MarkupLine(videoDiv.Url.MarkupErrorColor());
                 }
+
+                index++;
             }
         }
         else
         {
             AnsiConsole.MarkupLine("Видео на найдены".MarkupErrorColor());
         }
-        
+
+        if (_timer != null)
+        {
+            await _timer.DisposeAsync();
+        }
         File.Delete("cookies.txt");
         drv.Dispose();
     }
 
-    public async IAsyncEnumerable<VideoDiv> ScrollAndGetUrls(ChrDrv drv, XpathSet xpathSet)
+    public IEnumerable<VideoDiv> ScrollAndGetUrls(ChrDrv drv, XpathSet xpathSet)
     {
-        var height = drv.ExecuteScript("return document.body.scrollHeight");
-
         var list = new HashSet<string>();
+        var retriesAtBottom = 0;
+
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
-            await StopAtCaptcha(drv); // *
             var parse = drv.PageSource.GetParse();
-
-            if (parse is null)
-            {
-                continue;
-            }
+            if (parse is null) continue;
 
             foreach (var videoDiv in GetVideoUrls(parse, xpathSet))
             {
                 if (lifetime.ApplicationStopping.IsCancellationRequested) break;
                 if (videoDiv is null || !list.Add(videoDiv.Url)) continue;
+
                 yield return videoDiv;
             }
 
             if (lifetime.ApplicationStopping.IsCancellationRequested) break;
-            
-            await StopAtCaptcha(drv); // *
+
+            var previousHeight = drv.ExecuteScript("return document.body.scrollHeight");
             drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-            await StopAtCaptcha(drv); // *
-            drv.SpecialWait(5000);
+            drv.SpecialWait(3000);
             var newHeight = drv.ExecuteScript("return document.body.scrollHeight");
-            if (newHeight != null && newHeight.Equals(height))
+
+            if (newHeight != null && newHeight.Equals(previousHeight))
             {
+                retriesAtBottom++;
+
+                if (retriesAtBottom > 2)
+                {
+                    yield break;
+                }
+
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight-4000)");
                 drv.SpecialWait(2000);
-                await StopAtCaptcha(drv); // *
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
-                drv.SpecialWait(5000);
-                newHeight = drv.ExecuteScript("return document.body.scrollHeight");
+                drv.SpecialWait(3000);
+            }
+            else
+            {
+                retriesAtBottom = 0;
             }
         }
     }
-
+    
     public IEnumerable<VideoDiv?> GetVideoUrls(ParserWrapper parse, XpathSet xpath)
     {
         var xpathCollection = parse.GetXPaths(xpath.Root);
@@ -171,20 +184,19 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
         }
     }
 
-    public async Task StopAtCaptcha(ChrDrv chrDrv)
+    private void TimerCallback(object? state)
     {
-        while (!lifetime.ApplicationStopping.IsCancellationRequested)
-        {
-            var isCaptcha =
-                await chrDrv.GetElement(By.XPath("//div[@role='dialog' and contains(@class,'captcha_verify')]"), 3);
-            if (isCaptcha == null) break;
+        if (state is not ChrDrv drv) return;
+        var parse = drv.PageSource.GetParse();
+        var hasCaptcha = parse?.GetNodeByXPath("//div[contains(@class,'captcha-verify')]");
+        if (hasCaptcha == null) return;
 
-            AnsiConsole.MarkupLine("Обнаружена каптча, пройдите и нажмите любую клавишу...".MarkupMainColor());
-            Console.ReadKey(true);
-            break;
-        }
+        _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+        Console.WriteLine("Обнаружена каптча, пройдите и нажмите любую клавишу...");
+        Console.ReadKey(true);
+        _timer?.Change(0, 1000);
     }
-
+    
     public async Task<string?> DownloadVideoFile(string url, string directoryPath)
     {
         var fileName = url.Split('/').Last();
@@ -201,7 +213,7 @@ public class TikTokHandler(Style style, IHostApplicationLifetime lifetime) : ITi
             .WithValidation(CommandResultValidation.None)
             .WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorStringBuilder));
         
-        await cli.ExecuteBufferedAsync();
+        await cli.ExecuteBufferedAsync(lifetime.ApplicationStopping);
         
         var error = errorStringBuilder.ToString();
         if (!string.IsNullOrEmpty(error))

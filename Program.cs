@@ -29,21 +29,26 @@ try
     ChrDrvSettings.ChromeDir = Path.Combine(@"H:\Chrome"); // TODO Directory.GetCurrentDirectory() // "Chrome"
     ChrDrvSettings.UsernameDir = "ReallyRealUser";
 
+    AnsiConsole.MarkupLine("Запуск...".MarkupAquaColor());
+    
     await "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
         .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
     
     var builder = Host.CreateApplicationBuilder();
 
     builder.Services.AddSerilog();
-    builder.Services.AddSingleton<Style>(_ => new Style(Color.MediumOrchid3));
+    builder.Services.AddSingleton<Style>(_ => new Style(Color.MediumPurple3));
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
     builder.Services.AddHostedService<ConsoleMenu>();
     
     var app = builder.Build();
+
+    app.Services
+        .GetRequiredService<IHostApplicationLifetime>()
+        .ApplicationStopping
+        .Register(Extensions.KillChromeDrivers);
     
     await app.RunAsync();
-    
-    Extensions.KillChromeDrivers();
 }
 catch (Exception e)
 {
