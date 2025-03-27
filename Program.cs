@@ -26,10 +26,20 @@ try
 {
     await Extensions.Switch();
 
-    AnsiConsole.MarkupLine("Запуск...".MarkupAquaColor());
+    var style = new Style(Color.Aquamarine1);
     
-    await "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
-        .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
+    // AnsiConsole.MarkupLine("Запуск...".MarkupPrimaryColor());
+
+    await AnsiConsole.Status()
+        .Spinner(Spinner.Known.Balloon)
+        .SpinnerStyle(style)
+        .StartAsync("Запуск...", async _ => 
+        {
+            await "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+                .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
+        });
+    
+    
     
     var builder = Host.CreateApplicationBuilder();
 
@@ -39,7 +49,7 @@ try
         ChromeDir = Path.Combine(@"H:\Chrome"), // TODO Directory.GetCurrentDirectory() // "Chrome"
         UsernameDir = "ReallyRealUser"
     });
-    builder.Services.AddSingleton<Style>(_ => new Style(Color.MediumPurple3));
+    builder.Services.AddSingleton<Style>(_ => style);
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
     builder.Services.AddHostedService<ConsoleMenu>();
     
@@ -47,6 +57,7 @@ try
 
     AppDomain.CurrentDomain.ProcessExit += (s, e) =>
     {
+        File.Delete("cookies.txt");
         if (app.Services.GetRequiredService<ITikTokHandler>() is not { } handler) return;
         foreach (var drv in handler.Drivers)
         {

@@ -33,21 +33,31 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
     private Timer? _timer;
     private const int TimerPeriod = 1000;
-    private const string VideosDirectory = @"F:\tt\videos";  // TODO
+    public const string VideosDirectory = @"F:\tt\videos";  // TODO
     public List<ChrDrv> Drivers { get; set; } = [];
+    private volatile bool _captchaDetected;
 
     public async Task Login()
     {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("Пройдите авторизацию, после чего нажмите любую клавишу...".MarkupPrimaryColor());
+        AnsiConsole.WriteLine();
+        
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
 
         await drv.Navigate().GoToUrlAsync("https://www.tiktok.com/");
         await drv.ClickElement(
             By.XPath("//div[contains(@class, 'NavPlaceholder')]//button[@id='header-login-button']"));
+        
+        Console.ReadKey(true);
+        
+        drv.Dispose();
     }
 
     public async Task DownloadUser()
     {
+        AnsiConsole.WriteLine();
         var username = GetUsername();
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
@@ -60,7 +70,9 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
 
         await drv.Navigate().GoToUrlAsync(userUrl);
 
-        AnsiConsole.MarkupLine("Подготовка...".MarkupMainColor());
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("Подготовка...".MarkupPrimaryColor());
+        AnsiConsole.WriteLine();
         
         var userPath = Path.Combine(VideosDirectory, "users", username);
         var index = 1;
@@ -83,6 +95,12 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
             foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
             {
                 if (lifetime.ApplicationStopping.IsCancellationRequested) break;
+                
+                while (_captchaDetected)
+                {
+                    await Task.Delay(3000);
+                }
+                
                 drv.FocusAndScrollToElement(videoDiv.Xpath);
                 var path = await _downloadPolicy.ExecuteAsync(async () =>
                 {
@@ -91,13 +109,13 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                 });
                 if (path != null)
                 {
-                    AnsiConsole.Markup($"[{index}] ".EscapeMarkup().MarkupMainColor());
+                    AnsiConsole.Markup($"[[{index}]] ".MarkupSecondaryColor());
                     AnsiConsole.Write(new TextPath(path.EscapeMarkup())
                         .RootColor(Color.Yellow)
                         .SeparatorColor(Color.SeaGreen1)
                         .StemColor(Color.Yellow)
                         .LeafColor(Color.Green));
-                    AnsiConsole.Markup(" OK".MarkupAquaColor());
+                    AnsiConsole.Markup(" OK".MarkupPrimaryColor());
                     AnsiConsole.WriteLine();
                 }
                 else
@@ -110,13 +128,16 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         }
         else
         {
+            AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("Видео на найдены".MarkupErrorColor());
+            AnsiConsole.WriteLine();
         }
 
         if (_timer != null)
         {
             await _timer.DisposeAsync();
         }
+        
         File.Delete("cookies.txt");
         drv.Dispose();
     }
@@ -186,11 +207,18 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         if (state is not ChrDrv drv) return;
         var parse = drv.PageSource.GetParse();
         var hasCaptcha = parse?.GetNodeByXPath("//div[contains(@class,'captcha-verify')]");
+
         if (hasCaptcha == null) return;
 
+        _captchaDetected = true;
         _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-        Console.WriteLine("Обнаружена каптча, пройдите и нажмите любую клавишу...");
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("Обнаружена каптча, пройдите и нажмите любую клавишу...".MarkupSecondaryColor());
+        AnsiConsole.WriteLine();
         Console.ReadKey(true);
+
+        _captchaDetected = false;
         _timer?.Change(0, 1000);
     }
     
@@ -229,7 +257,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
     public string GetUsername()
     {
         return AnsiConsole.Prompt(
-            new TextPrompt<string>($"{"Введите".MarkupMainColor()} {"юзернейм (без @)".MarkupAquaColor()}")
+            new TextPrompt<string>($"{"Введите юзернейм ".MarkupPrimaryColor()} {"без @".MarkupSecondaryColor()}")
                 .PromptStyle(style)
                 .ValidationErrorMessage("Некорректный юзернейм".MarkupErrorColor())
                 .Validate(s => !string.IsNullOrEmpty(s))).Trim();

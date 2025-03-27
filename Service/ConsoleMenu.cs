@@ -1,11 +1,13 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 using Spectre.Console;
 using TikTokDownloader.Service.TikTok;
+using UndChrDrv;
 
 namespace TikTokDownloader.Service;
 
-public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style) : IHostedService
+public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style, ChrDrvSettings drvSettings) : IHostedService
 {
     private Task? _task;
     
@@ -34,18 +36,42 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
     {
         const string auth = "Авторизация";
         const string download = "Загрузка";
+        const string openDirectory = "Открыть папку загрузок";
         const string feedback = "Обратная связь";
         const string exit = "Выйти";
 
         const string downloadUser = "Скачать по юзернейму";
         const string downloadTag = "Скачать по тегу";
         
+        AnsiConsole.Markup("Chrome: ".MarkupPrimaryColor());
+        AnsiConsole.Write(new TextPath(UndChrDrv.Extensions.FindChromePath().EscapeMarkup())
+            .RootColor(Color.Yellow)
+            .SeparatorColor(Color.SeaGreen1)
+            .StemColor(Color.Yellow)
+            .LeafColor(Color.Green));
+        AnsiConsole.WriteLine();
+        AnsiConsole.Markup("ChromeData: ".MarkupPrimaryColor());
+        AnsiConsole.Write(new TextPath(drvSettings.ChromeDir.EscapeMarkup())
+            .RootColor(Color.Yellow)
+            .SeparatorColor(Color.SeaGreen1)
+            .StemColor(Color.Yellow)
+            .LeafColor(Color.Green));
+        AnsiConsole.WriteLine();
+        AnsiConsole.Markup("ChromeDriver: ".MarkupPrimaryColor());
+        AnsiConsole.Write(new TextPath(Path.Combine(drvSettings.ChromeDir, "chromedriver.exe").EscapeMarkup())
+            .RootColor(Color.Yellow)
+            .SeparatorColor(Color.SeaGreen1)
+            .StemColor(Color.Yellow)
+            .LeafColor(Color.Green));
+        AnsiConsole.WriteLine();
+        AnsiConsole.WriteLine();
+        
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
             var choices = new SelectionPrompt<string>()
                 .Title("Выберете действие")
                 .HighlightStyle(style)
-                .AddChoices(auth, download, feedback, exit);
+                .AddChoices(auth, download, openDirectory, feedback, exit);
             var prompt = AnsiConsole.Prompt(choices);
             try
             {
@@ -69,6 +95,12 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
                                 
                                 break;
                         }
+                        break;
+                    case openDirectory:
+                        Process.Start(new ProcessStartInfo(TikTokHandler.VideosDirectory) { UseShellExecute = true });
+                        break;
+                    case feedback:
+                        Process.Start(new ProcessStartInfo("https://t.me/eridani_8") { UseShellExecute = true });
                         break;
                     case exit:
                         lifetime.StopApplication();

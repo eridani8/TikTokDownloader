@@ -7,14 +7,14 @@ namespace TikTokDownloader.Service;
 
 public static class Extensions
 {
-    public static string MarkupAquaColor(this string str)
+    public static string MarkupSecondaryColor(this string str)
+    {
+        return $"[yellow1]{str}[/]";
+    }
+    
+    public static string MarkupPrimaryColor(this string str)
     {
         return $"[aquamarine1]{str}[/]";
-    }
-
-    public static string MarkupMainColor(this string str)
-    {
-        return $"[mediumorchid3]{str}[/]";
     }
     
     public static string MarkupErrorColor(this string str)
