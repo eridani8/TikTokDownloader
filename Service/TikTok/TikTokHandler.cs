@@ -66,6 +66,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         var username = GetUserString($"{"Введите юзернейм ".MarkupPrimaryColor()} {"без @".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
+        _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
 
         var userUrl = Url.Combine(SiteUrl, $"@{username}");
         if (!Url.IsValid(userUrl))
@@ -90,6 +91,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         var tag = GetUserString($"{"Введите тег ".MarkupPrimaryColor()} {"без #".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
+        _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
 
         var tagUrl = Url.Combine(SiteUrl, "tag", $"@{tag}");
         if (!Url.IsValid(tagUrl))
@@ -127,12 +129,11 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
             _ => throw new ArgumentOutOfRangeException(nameof(downloadType), downloadType, null)
         };
 
-        await Task.Delay(5000);
+        await Task.Delay(10000);
         
         var videosContainer = await drv.GetElement(By.XPath(videoContainer), 7);
         if (videosContainer is not null)
         {
-            _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
             var downloadPolicy = Policy
                 .HandleResult<string?>(result => result == null)
                 .WaitAndRetryAsync(7, _ => TimeSpan.FromSeconds(3));
@@ -150,7 +151,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                 _ => throw new ArgumentOutOfRangeException(nameof(downloadType), downloadType, null)
             };
             
-            AnsiConsole.MarkupLine($"Загрузка {downloadTypeStr} {str.EscapeMarkup()}".MarkupPrimaryColor());
+            AnsiConsole.MarkupLine($"Загрузка {downloadTypeStr} ".MarkupPrimaryColor() + str.EscapeMarkup().MarkupSecondaryColor());
             AnsiConsole.WriteLine();
 
             foreach (var videoDiv in ScrollAndGetUrls(drv, xpathSet))
@@ -206,7 +207,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
             await _timer.DisposeAsync();
         }
         File.Delete("cookies.txt");
-        // drv.Dispose(); // TODO
+        drv.Dispose();
         AnsiConsole.WriteLine();
     }
 
@@ -336,7 +337,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
             .WithValidation(CommandResultValidation.None);
             //.WithStandardErrorPipe(PipeTarget.ToStringBuilder(errorStringBuilder));
 
-        await cli.ExecuteBufferedAsync(lifetime.ApplicationStopping);
+        await cli.ExecuteBufferedAsync();
 
         // var error = errorStringBuilder.ToString();
         // if (!string.IsNullOrEmpty(error))

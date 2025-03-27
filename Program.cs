@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Flurl.Http;
+﻿using Flurl.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -9,7 +8,9 @@ using Spectre.Console;
 using TikTokDownloader.Service;
 using TikTokDownloader.Service.TikTok;
 using UndChrDrv;
-using Extensions = TikTokDownloader.Service.Extensions;
+using WebDriverManager;
+using WebDriverManager.DriverConfigs.Impl;
+using WebDriverManager.Helpers;
 
 const string outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 var logsPath = Path.Combine("logs");
@@ -24,13 +25,27 @@ Log.Logger = new LoggerConfiguration()
     
 try
 {
-    await Extensions.Switch();
-
     const string chromePath = "Chrome";
+
+    var chromeDirectory = Path.Combine(Directory.GetCurrentDirectory(), chromePath);
 
     if (!Directory.Exists(chromePath))
     {
-        throw new ApplicationException("The chrome directory could not be found");
+        Directory.CreateDirectory(chromePath);
+    }
+
+    var driverManager = new DriverManager();
+    var driverPath = driverManager.SetUpDriver(new ChromeConfig(), VersionResolveStrategy.MatchingBrowser);
+
+    if (!File.Exists(driverPath))
+    {
+        throw new ApplicationException("The chrome driver could not be found");
+    }
+    
+    var profilePath = Path.Combine(chromeDirectory, "Profile");
+    if (!Directory.Exists(profilePath))
+    {
+        Directory.CreateDirectory(profilePath);
     }
     
     var style = new Style(Color.Aquamarine1);
@@ -49,8 +64,9 @@ try
     builder.Services.AddSerilog();
     builder.Services.AddSingleton<ChrDrvSettings>(_ => new ChrDrvSettings()
     {
-        ChromeDir = Path.Combine(Directory.GetCurrentDirectory(), chromePath),
-        UsernameDir = "Human"
+        ChromeDir = chromeDirectory,
+        UsernameDir = "Human",
+        ChromeDriverPath = driverPath
     });
     builder.Services.AddSingleton<Style>(_ => style);
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
@@ -61,7 +77,7 @@ try
     AppDomain.CurrentDomain.ProcessExit += (s, e) =>
     {
         File.Delete("cookies.txt");
-        if (app.Services.GetRequiredService<ITikTokHandler>() is not { } handler) return;
+        if (app.Services.GetService<ITikTokHandler>() is not { } handler) return;
         foreach (var drv in handler.Drivers)
         {
             drv.Dispose();

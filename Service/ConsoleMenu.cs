@@ -50,15 +50,8 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
             .StemColor(Color.Yellow)
             .LeafColor(Color.Green));
         AnsiConsole.WriteLine();
-        AnsiConsole.Markup("ChromeData: ".MarkupPrimaryColor());
-        AnsiConsole.Write(new TextPath(drvSettings.ChromeDir.EscapeMarkup())
-            .RootColor(Color.Yellow)
-            .SeparatorColor(Color.SeaGreen1)
-            .StemColor(Color.Yellow)
-            .LeafColor(Color.Green));
-        AnsiConsole.WriteLine();
         AnsiConsole.Markup("ChromeDriver: ".MarkupPrimaryColor());
-        AnsiConsole.Write(new TextPath(Path.Combine(drvSettings.ChromeDir, "chromedriver.exe").EscapeMarkup())
+        AnsiConsole.Write(new TextPath(drvSettings.ChromeDriverPath.EscapeMarkup())
             .RootColor(Color.Yellow)
             .SeparatorColor(Color.SeaGreen1)
             .StemColor(Color.Yellow)
