@@ -64,7 +64,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
             var choices = new SelectionPrompt<string>()
                 .Title("Выберете действие")
                 .HighlightStyle(style)
-                .AddChoices(auth, download, openDirectory, feedback, exit);
+                .AddChoices(openDirectory, auth, download, feedback, exit);
             var prompt = AnsiConsole.Prompt(choices);
             try
             {

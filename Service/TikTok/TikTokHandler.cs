@@ -62,7 +62,6 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
 
     public async Task DownloadUser()
     {
-        AnsiConsole.WriteLine();
         var username = GetUserString($"{"Введите юзернейм ".MarkupPrimaryColor()} {"без @".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
@@ -87,7 +86,6 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
 
     public async Task DownloadTag()
     {
-        AnsiConsole.WriteLine();
         var tag = GetUserString($"{"Введите тег ".MarkupPrimaryColor()} {"без #".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         Drivers.Add(drv);
