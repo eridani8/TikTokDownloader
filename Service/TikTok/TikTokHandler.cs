@@ -38,7 +38,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
     private const string SiteUrl = "https://www.tiktok.com";
     private Timer? _timer;
     private const int TimerPeriod = 1000;
-    public const string VideosDirectory = @"F:\tt\videos"; // TODO
+    public const string VideosDirectory = "videos";
     public List<ChrDrv> Drivers { get; set; } = [];
     private volatile bool _captchaDetected;
 

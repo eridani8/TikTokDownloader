@@ -26,6 +26,13 @@ try
 {
     await Extensions.Switch();
 
+    const string chromePath = "Chrome";
+
+    if (!Directory.Exists(chromePath))
+    {
+        throw new ApplicationException("The chrome directory could not be found");
+    }
+    
     var style = new Style(Color.Aquamarine1);
     
     await AnsiConsole.Status()
@@ -37,15 +44,13 @@ try
                 .DownloadFileAsync(Directory.GetCurrentDirectory(), "yt-dlp.exe");
         });
     
-    
-    
     var builder = Host.CreateApplicationBuilder();
 
     builder.Services.AddSerilog();
     builder.Services.AddSingleton<ChrDrvSettings>(_ => new ChrDrvSettings()
     {
-        ChromeDir = Path.Combine(@"H:\Chrome"), // TODO Directory.GetCurrentDirectory() // "Chrome"
-        UsernameDir = "ReallyRealUser"
+        ChromeDir = Path.Combine(Directory.GetCurrentDirectory(), chromePath),
+        UsernameDir = "Human"
     });
     builder.Services.AddSingleton<Style>(_ => style);
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
