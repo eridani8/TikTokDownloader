@@ -10,6 +10,7 @@ using Polly;
 using Polly.Retry;
 using Spectre.Console;
 using UndChrDrv;
+using UndChrDrv.ChrDrvSettings;
 using UndChrDrv.Stealth.Clients.Extensions;
 
 namespace TikTokDownloader.Service.TikTok;
@@ -30,16 +31,14 @@ public interface ITikTokHandler
     IEnumerable<VideoDiv?> GetVideoUrls(ParserWrapper parse, XpathSet xpath);
     Task<string?> DownloadVideoFile(string url, string directoryPath);
     string GetUserString(string request);
-    List<ChrDrv> Drivers { get; set; }
 }
 
-public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
+public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
 {
     private const string SiteUrl = "https://www.tiktok.com";
     private Timer? _timer;
-    private const int TimerPeriod = 1000;
+    private const int CheckCaptchaPeriod = 400;
     public const string VideosDirectory = "videos";
-    public List<ChrDrv> Drivers { get; set; } = [];
     private volatile bool _captchaDetected;
 
     public async Task Login()
@@ -49,7 +48,6 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         AnsiConsole.WriteLine();
 
         var drv = await ChrDrvFactory.Create(drvSettings);
-        Drivers.Add(drv);
 
         await drv.Navigate().GoToUrlAsync("https://www.tiktok.com/");
         await drv.ClickElement(
@@ -64,8 +62,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
     {
         var username = GetUserString($"{"Введите юзернейм ".MarkupPrimaryColor()} {"без @".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
-        Drivers.Add(drv);
-        _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
+        _timer = new Timer(TimerCallback, drv, CheckCaptchaPeriod, CheckCaptchaPeriod);
 
         var userUrl = Url.Combine(SiteUrl, $"@{username}");
         if (!Url.IsValid(userUrl))
@@ -88,8 +85,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
     {
         var tag = GetUserString($"{"Введите тег ".MarkupPrimaryColor()} {"без #".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
-        Drivers.Add(drv);
-        _timer = new Timer(TimerCallback, drv, TimerPeriod, TimerPeriod);
+        _timer = new Timer(TimerCallback, drv, CheckCaptchaPeriod, CheckCaptchaPeriod);
 
         var tagUrl = Url.Combine(SiteUrl, "tag", $"@{tag}");
         if (!Url.IsValid(tagUrl))
@@ -305,18 +301,21 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
         var parse = drv.PageSource.GetParse();
         var hasCaptcha = parse?.GetNodeByXPath("//div[contains(@class,'captcha-verify')]");
 
-        if (hasCaptcha == null) return;
-
-        _captchaDetected = true;
-        _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("Обнаружена каптча, пройдите и нажмите любую клавишу...".MarkupSecondaryColor());
-        AnsiConsole.WriteLine();
-        Console.ReadKey(true);
-
-        _captchaDetected = false;
-        _timer?.Change(0, 1000);
+        if (hasCaptcha != null && !_captchaDetected)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("Обнаружена каптча, пройдите...".MarkupSecondaryColor());
+            AnsiConsole.WriteLine();
+            _captchaDetected = true;
+        }
+        
+        if (hasCaptcha == null && _captchaDetected)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("Каптча пройдена, продолжаем...".MarkupSecondaryColor());
+            AnsiConsole.WriteLine();
+            _captchaDetected = false;
+        }
     }
 
     public async Task<string?> DownloadVideoFile(string url, string directoryPath)

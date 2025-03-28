@@ -4,10 +4,11 @@ using Serilog;
 using Spectre.Console;
 using TikTokDownloader.Service.TikTok;
 using UndChrDrv;
+using UndChrDrv.ChrDrvSettings;
 
 namespace TikTokDownloader.Service;
 
-public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style, ChrDrvSettings drvSettings) : IHostedService
+public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style, ChrDrvSettingsWithoutDriver drvSettings) : IHostedService
 {
     private Task? _task;
     
@@ -21,7 +22,6 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
     {
         try
         {
-            lifetime.StopApplication();
             if (_task != null)
             {
                 await Task.WhenAny(_task, Task.Delay(Timeout.Infinite, cancellationToken));
@@ -30,6 +30,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
         finally
         {
             _task?.Dispose();
+            lifetime.StopApplication();
         }
     }
 
@@ -52,7 +53,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
             .LeafColor(Color.Green));
         AnsiConsole.WriteLine();
         AnsiConsole.Markup("ChromeDriver: ".MarkupPrimaryColor());
-        AnsiConsole.Write(new TextPath(drvSettings.ChromeDriverPath.EscapeMarkup())
+        AnsiConsole.Write(new TextPath(drvSettings.DriverPath.EscapeMarkup())
             .RootColor(Color.Yellow)
             .SeparatorColor(Color.SeaGreen1)
             .StemColor(Color.Yellow)

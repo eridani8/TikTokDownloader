@@ -8,6 +8,7 @@ using Spectre.Console;
 using TikTokDownloader.Service;
 using TikTokDownloader.Service.TikTok;
 using UndChrDrv;
+using UndChrDrv.ChrDrvSettings;
 using WebDriverManager;
 using WebDriverManager.DriverConfigs.Impl;
 using WebDriverManager.Helpers;
@@ -62,11 +63,11 @@ try
     var builder = Host.CreateApplicationBuilder();
 
     builder.Services.AddSerilog();
-    builder.Services.AddSingleton<ChrDrvSettings>(_ => new ChrDrvSettings()
+    builder.Services.AddSingleton<ChrDrvSettingsWithoutDriver>(_ => new ChrDrvSettingsWithoutDriver()
     {
         ChromeDir = chromeDirectory,
         UsernameDir = "Human",
-        ChromeDriverPath = driverPath
+        DriverPath = driverPath
     });
     builder.Services.AddSingleton<Style>(_ => style);
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
@@ -76,12 +77,8 @@ try
 
     AppDomain.CurrentDomain.ProcessExit += (s, e) =>
     {
+        UndChrDrv.Extensions.KillAllOpenedBrowsers();
         File.Delete("cookies.txt");
-        if (app.Services.GetService<ITikTokHandler>() is not { } handler) return;
-        foreach (var drv in handler.Drivers)
-        {
-            drv.Dispose();
-        }
     };
     
     await app.RunAsync();
