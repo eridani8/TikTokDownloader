@@ -35,7 +35,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
 
     private async Task Worker()
     {
-        const string auth = "Авторизация";
+        const string auth = "Авторизация [[опционально]]";
         const string download = "Загрузка";
         const string openDirectory = "Открыть папку загрузок";
         const string feedback = "Обратная связь";
@@ -65,7 +65,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
             var choices = new SelectionPrompt<string>()
                 .Title("Выберете действие")
                 .HighlightStyle(style)
-                .AddChoices(openDirectory, auth, download, feedback, exit);
+                .AddChoices(openDirectory, download, auth, feedback, exit);
             var prompt = AnsiConsole.Prompt(choices);
             try
             {
