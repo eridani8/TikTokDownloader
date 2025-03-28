@@ -44,6 +44,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
         const string downloadUser = "Скачать по юзернейму";
         const string downloadTag = "Скачать по тегу";
         
+        AnsiConsole.WriteLine();
         AnsiConsole.Markup("Chrome: ".MarkupPrimaryColor());
         AnsiConsole.Write(new TextPath(Drv.Extensions.FindChromePath().EscapeMarkup())
             .RootColor(Color.Yellow)
