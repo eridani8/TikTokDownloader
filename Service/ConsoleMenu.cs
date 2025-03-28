@@ -91,6 +91,10 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
                         }
                         break;
                     case openDirectory:
+                        if (!Directory.Exists(TikTokHandler.VideosDirectory))
+                        {
+                            Directory.CreateDirectory(TikTokHandler.VideosDirectory);
+                        }
                         Process.Start(new ProcessStartInfo(TikTokHandler.VideosDirectory) { UseShellExecute = true });
                         break;
                     case feedback:
