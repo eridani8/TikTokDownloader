@@ -263,7 +263,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                             var secondsRemaining = 60;
                             while (secondsRemaining > 0)
                             {
-                                ctx.Status($"Осталось {secondsRemaining} секунд...");
+                                ctx.Status($"Возобновление через {secondsRemaining} секунд(ы)...");
                                 await Task.Delay(1000);
                                 secondsRemaining--;
                             }
