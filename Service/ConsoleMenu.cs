@@ -16,6 +16,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
         _task = Worker();
         return Task.CompletedTask;
     }
+    
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         try

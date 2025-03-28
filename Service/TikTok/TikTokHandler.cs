@@ -244,7 +244,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                     AnsiConsole.WriteLine();
                     AnsiConsole.MarkupLine("В некоторых случаях, видео могут появится после задержки".MarkupSecondaryColor());
                     var confirmation = AnsiConsole.Prompt(
-                        new TextPrompt<bool>("Подтвердите завершение загрузки, или продолжить поиск видео через 1 минуту".MarkupSecondaryColor())
+                        new TextPrompt<bool>("Подтвердите завершение загрузки (y), или возобновление (n) поиска видео через 1 минуту".MarkupSecondaryColor())
                             .AddChoice(true)
                             .AddChoice(false)
                             .DefaultValue(true)
