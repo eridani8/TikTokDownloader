@@ -254,8 +254,7 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                     {
                         yield break;
                     }
-
-                    retriesAtBottom = 0;
+                    
                     var task = AnsiConsole.Status()
                         .Spinner(Spinner.Known.Balloon)
                         .SpinnerStyle(style)
@@ -270,6 +269,8 @@ public class TikTokHandler(Style style, ChrDrvSettings drvSettings, IHostApplica
                             }
                         });
                     task.GetAwaiter().GetResult();
+                    retriesAtBottom = 0;
+                    AnsiConsole.WriteLine();
                 }
 
                 drv.ExecuteScript("window.scrollTo(0, document.body.scrollHeight-4000)");
