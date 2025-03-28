@@ -1,4 +1,5 @@
 ﻿using Flurl.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -23,7 +24,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Spectre(outputTemplate)
     .WriteTo.File($"{logsPath}/.log", rollingInterval: RollingInterval.Day, outputTemplate: outputTemplate, restrictedToMinimumLevel: LogEventLevel.Error)
     .CreateLogger();
-    
+
 try
 {
     const string chromePath = "Chrome";
@@ -62,6 +63,17 @@ try
     
     var builder = Host.CreateApplicationBuilder();
 
+    var appSettings = new AppSettings();
+    
+    foreach (var arg in args)
+    {
+        if (arg == "--save-json")
+        {
+            appSettings.SaveJson = true;
+        }
+    }
+
+    builder.Services.AddSingleton(appSettings);
     builder.Services.AddSerilog();
     builder.Services.AddSingleton<ChrDrvSettingsWithoutDriver>(_ => new ChrDrvSettingsWithoutDriver()
     {
@@ -71,7 +83,7 @@ try
     });
     builder.Services.AddSingleton<Style>(_ => style);
     builder.Services.AddSingleton<ITikTokHandler, TikTokHandler>();
-    builder.Services.AddHostedService<ConsoleMenu>();
+    builder.Services.AddHostedService<ConsoleMenu>(); 
     
     var app = builder.Build();
 

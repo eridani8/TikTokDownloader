@@ -33,7 +33,7 @@ public interface ITikTokHandler
     string GetUserString(string request);
 }
 
-public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings, IHostApplicationLifetime lifetime) : ITikTokHandler
+public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings, IHostApplicationLifetime lifetime, AppSettings appSettings) : ITikTokHandler
 {
     private const string SiteUrl = "https://www.tiktok.com";
     private Timer? _timer;
@@ -136,6 +136,14 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
+            }
+
+            if (appSettings.SaveJson)
+            {
+                if (!Directory.Exists(appSettings.JsonsPath))
+                {
+                    Directory.CreateDirectory(appSettings.JsonsPath);
+                }
             }
 
             var downloadTypeStr = downloadType switch
@@ -327,8 +335,10 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
 
         var fullDirectoryPath = Path.GetFullPath(directoryPath);
 
-        var args =
-            $"""--cookies=cookies.txt --no-progress -N 7 -P "{fullDirectoryPath}" -o "{fileName}.%(ext)s" {url} """;
+        var saveJson = appSettings.SaveJson 
+            ? $""" --write-info-json -o "infojson:{appSettings.JsonsPath}\%(uploader)s_%(id)s.%(ext)s" """ 
+            : ""; 
+        var args = $"""--cookies=cookies.txt --no-progress -N 7 -P "{fullDirectoryPath}" {saveJson} -o "{fileName}.%(ext)s" {url} """;
         var cli = Cli.Wrap("yt-dlp.exe")
             .WithArguments(args)
             .WithWorkingDirectory(Directory.GetCurrentDirectory())
