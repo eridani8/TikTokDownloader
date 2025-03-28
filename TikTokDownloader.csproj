@@ -28,11 +28,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="Drv">
+        <HintPath>..\ChrDrv\Drv\bin\Debug\net9.0\Drv.dll</HintPath>
+      </Reference>
       <Reference Include="ParserExtension">
         <HintPath>F:\dev\proj\ParserExtension\ParserExtension\bin\Debug\net9.0\ParserExtension.dll</HintPath>
-      </Reference>
-      <Reference Include="UndChrDrv">
-        <HintPath>F:\dev\proj\ChrDrv\UndChrDrv\bin\Debug\net9.0\UndChrDrv.dll</HintPath>
       </Reference>
     </ItemGroup>
 

@@ -1,17 +1,15 @@
-﻿using System.Text;
-using CliWrap;
+﻿using CliWrap;
 using CliWrap.Buffered;
+using Drv;
+using Drv.ChrDrvSettings;
+using Drv.Stealth.Clients.Extensions;
 using Flurl;
 using Microsoft.Extensions.Hosting;
 using OpenQA.Selenium;
 using ParserExtension;
 using ParserExtension.Helpers;
 using Polly;
-using Polly.Retry;
 using Spectre.Console;
-using UndChrDrv;
-using UndChrDrv.ChrDrvSettings;
-using UndChrDrv.Stealth.Clients.Extensions;
 
 namespace TikTokDownloader.Service.TikTok;
 
@@ -40,6 +38,7 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
     private const int CheckCaptchaPeriod = 400;
     public const string VideosDirectory = "videos";
     private volatile bool _captchaDetected;
+    private const int PageOverflowLimit = 200;
 
     public async Task Login()
     {
@@ -60,7 +59,7 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
 
     public async Task DownloadUser()
     {
-        var username = GetUserString($"{"Введите юзернейм ".MarkupPrimaryColor()} {"без @".MarkupSecondaryColor()}");
+        var username = GetUserString($"{"Введите юзернейм ".MarkupPrimaryColor()} {"@".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         _timer = new Timer(TimerCallback, drv, CheckCaptchaPeriod, CheckCaptchaPeriod);
 
@@ -83,7 +82,7 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
 
     public async Task DownloadTag()
     {
-        var tag = GetUserString($"{"Введите тег ".MarkupPrimaryColor()} {"без #".MarkupSecondaryColor()}");
+        var tag = GetUserString($"{"Введите тег ".MarkupPrimaryColor()} {"#".MarkupSecondaryColor()}");
         var drv = await ChrDrvFactory.Create(drvSettings);
         _timer = new Timer(TimerCallback, drv, CheckCaptchaPeriod, CheckCaptchaPeriod);
 
@@ -179,6 +178,10 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
                         .SeparatorColor(Color.SeaGreen1)
                         .StemColor(Color.Yellow)
                         .LeafColor(Color.Green));
+                    if (appSettings.SaveJson)
+                    {
+                        AnsiConsole.Markup(" JSON".MarkupSecondaryColor());
+                    }
                     AnsiConsole.Markup(" OK".MarkupPrimaryColor());
                     AnsiConsole.WriteLine();
                     drv.HighlightElementByXPath(videoDiv.Xpath, "yellow");
@@ -223,6 +226,15 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
             var parse = drv.PageSource.GetParse();
             if (parse is null) continue;
 
+            if (list.Count >= PageOverflowLimit)
+            {
+                drv.RemoveElementsBySelector("div[style='outline: yellow solid 3px;']");
+                list.Clear();
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("Очистка DOM".MarkupPrimaryColor());
+                AnsiConsole.WriteLine();
+            }
+            
             foreach (var videoDiv in GetVideoUrls(parse, xpathSet))
             {
                 if (lifetime.ApplicationStopping.IsCancellationRequested) break;

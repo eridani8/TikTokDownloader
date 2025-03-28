@@ -1,14 +1,13 @@
 ﻿using System.Diagnostics;
+using Drv.ChrDrvSettings;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Spectre.Console;
 using TikTokDownloader.Service.TikTok;
-using UndChrDrv;
-using UndChrDrv.ChrDrvSettings;
 
 namespace TikTokDownloader.Service;
 
-public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style, ChrDrvSettingsWithoutDriver drvSettings) : IHostedService
+public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifetime, Style style, ChrDrvSettingsWithoutDriver drvSettings, AppSettings appSettings) : IHostedService
 {
     private Task? _task;
     
@@ -46,7 +45,7 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
         const string downloadTag = "Скачать по тегу";
         
         AnsiConsole.Markup("Chrome: ".MarkupPrimaryColor());
-        AnsiConsole.Write(new TextPath(UndChrDrv.Extensions.FindChromePath().EscapeMarkup())
+        AnsiConsole.Write(new TextPath(Drv.Extensions.FindChromePath().EscapeMarkup())
             .RootColor(Color.Yellow)
             .SeparatorColor(Color.SeaGreen1)
             .StemColor(Color.Yellow)
@@ -59,12 +58,17 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
             .StemColor(Color.Yellow)
             .LeafColor(Color.Green));
         AnsiConsole.WriteLine();
+        if (appSettings.SaveJson)
+        {
+            AnsiConsole.Markup("Аргументы: ".MarkupPrimaryColor());
+            AnsiConsole.Markup("save-json".MarkupSecondaryColor());
+            AnsiConsole.WriteLine();
+        }
         AnsiConsole.WriteLine();
         
         while (!lifetime.ApplicationStopping.IsCancellationRequested)
         {
             var choices = new SelectionPrompt<string>()
-                .Title("Выберете действие")
                 .HighlightStyle(style)
                 .AddChoices(openDirectory, download, auth, feedback, exit);
             var prompt = AnsiConsole.Prompt(choices);
@@ -77,7 +81,6 @@ public class ConsoleMenu(ITikTokHandler handler, IHostApplicationLifetime lifeti
                         break;
                     case download:
                         var downloadChoices = new SelectionPrompt<string>()
-                            .Title("Выберете действие")
                             .HighlightStyle(style)
                             .AddChoices(downloadUser, downloadTag);
                         var downloadPrompt = AnsiConsole.Prompt(downloadChoices);

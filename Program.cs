@@ -1,5 +1,5 @@
-﻿using Flurl.Http;
-using Microsoft.Extensions.Configuration;
+﻿using Drv.ChrDrvSettings;
+using Flurl.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -8,8 +8,6 @@ using Serilog.Sinks.Spectre;
 using Spectre.Console;
 using TikTokDownloader.Service;
 using TikTokDownloader.Service.TikTok;
-using UndChrDrv;
-using UndChrDrv.ChrDrvSettings;
 using WebDriverManager;
 using WebDriverManager.DriverConfigs.Impl;
 using WebDriverManager.Helpers;
@@ -89,7 +87,7 @@ try
 
     AppDomain.CurrentDomain.ProcessExit += (s, e) =>
     {
-        UndChrDrv.Extensions.KillAllOpenedBrowsers();
+        Drv.Extensions.KillAllOpenedBrowsers();
         File.Delete("cookies.txt");
     };
     
