@@ -226,15 +226,13 @@ public class TikTokHandler(Style style, ChrDrvSettingsWithoutDriver drvSettings,
             var parse = drv.PageSource.GetParse();
             if (parse is null) continue;
 
-            if (list.Count >= PageOverflowLimit)
-            {
-                if (drv.RemoveElementsBySelector("div[style='outline: yellow solid 3px;']") > 0)
-                {
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine("Очистка DOM".MarkupPrimaryColor());
-                    AnsiConsole.WriteLine();
-                }
-            }
+            // if (list.Count >= PageOverflowLimit)
+            // {
+            //     drv.RemoveElementsBySelector("div[style='outline: yellow solid 3px;']");
+            //     AnsiConsole.WriteLine();
+            //     AnsiConsole.MarkupLine("Очистка DOM".MarkupPrimaryColor());
+            //     AnsiConsole.WriteLine();
+            // }
             
             foreach (var videoDiv in GetVideoUrls(parse, xpathSet))
             {
